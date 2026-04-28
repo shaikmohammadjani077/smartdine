@@ -37,15 +37,24 @@ export const getStaffDashboard = async (req, res) => {
     date: targetDate,
     status: "seated",
     tableId: { $ne: "" },
-  }).select("tableId userEmail time partySize").lean();
+  }).select("tableId userEmail time partySize _id").lean();
 
   const waitingBookings = await Booking.find({
     restaurantId: req.user.restaurantId,
     date: targetDate,
     status: { $in: ["waiting", "confirmed"] }
-  }).select("userEmail time partySize status tableId").sort({ createdAt: 1 }).lean();
+  }).select("userEmail time partySize status tableId createdAt").sort({ createdAt: 1 }).lean();
 
   console.log(`📈 Found ${activeBookings.length} active bookings and ${waitingBookings.length} waiting bookings`);
+
+  const allTodayBookings = await Booking.find({
+    restaurantId: req.user.restaurantId,
+    date: targetDate
+  }).lean();
+
+  const todayReservations = allTodayBookings.filter(b => b.status !== "cancelled").length;
+  const cancelledBookings = allTodayBookings.filter(b => b.status === "cancelled").length;
+  const walkIns = allTodayBookings.filter(b => b.userEmail && b.userEmail.endsWith("@walkin.local")).length;
 
   const bookedMap = new Map();
   activeBookings.forEach((b) => {
@@ -64,11 +73,19 @@ export const getStaffDashboard = async (req, res) => {
       status: booking ? "occupied" : "available",
       currentGuest: booking ? booking.userEmail.split("@")[0] : "",
       bookingTime: booking ? booking.time : "",
+      partySize: booking ? booking.partySize : 0,
+      bookingId: booking ? booking._id : null,
     };
   });
 
+  const tableUtilization = dbTables.length > 0 ? Math.round((activeBookings.length / dbTables.length) * 100) : 0;
+
   res.json({
     hotelName: restaurant.name,
+    todayReservations,
+    cancelledBookings,
+    walkIns,
+    tableUtilization,
     tables,
     waitlist: waitingBookings.map((b) => ({
       _id: b._id,
@@ -76,6 +93,8 @@ export const getStaffDashboard = async (req, res) => {
       time: b.time,
       guests: b.partySize,
       tableId: b.tableId,
+      status: b.status,
+      createdAt: b.createdAt
     })),
   });
 };

@@ -43,5 +43,11 @@ export const restaurantPayload = (body = {}) => {
   if (body.menu !== undefined) data.menu = Array.isArray(body.menu) ? body.menu : [];
   if (body.isActive !== undefined) data.isActive = Boolean(body.isActive);
 
+  if (body.contactNumber !== undefined) data.contactNumber = cleanText(body.contactNumber);
+  if (body.status !== undefined) data.status = cleanText(body.status);
+  if (body.openingTime !== undefined) data.openingTime = cleanText(body.openingTime);
+  if (body.closingTime !== undefined) data.closingTime = cleanText(body.closingTime);
+  if (body.tableTypes !== undefined) data.tableTypes = Array.isArray(body.tableTypes) ? body.tableTypes : [];
+
   return data;
 };

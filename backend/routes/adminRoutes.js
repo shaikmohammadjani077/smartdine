@@ -12,7 +12,8 @@ import {
   getAdminBookings,
   getRestaurantTables,
   addRestaurantTable,
-  deleteRestaurantTable
+  deleteRestaurantTable,
+  revokeStaffAccess
 } from "../controllers/adminController.js";
 import { auth, allow } from "../middlewares/authMiddleware.js";
 import { asyncHandler } from "../middlewares/errorMiddleware.js";
@@ -31,6 +32,7 @@ router.get("/waitlist", asyncHandler(getGlobalWaitlist));
 router.get("/bookings", asyncHandler(getAdminBookings));
 router.get("/staff", asyncHandler(getStaffUsers));
 router.post("/staff/assign", asyncHandler(assignRestaurantToStaff));
+router.put("/staff/:staffId/revoke", asyncHandler(revokeStaffAccess));
 
 // Table Management
 router.get("/restaurants/:id/tables", asyncHandler(getRestaurantTables));

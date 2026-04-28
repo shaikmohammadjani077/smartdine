@@ -33,15 +33,43 @@ export const createRestaurant = async (req, res) => {
 
   if (exists) return res.status(400).json({ message: "Restaurant already exists" });
 
-  const restaurant = await Restaurant.create({ tables: 10, ...data });
+  let totalTablesCount = 0;
+  if (data.tableTypes && data.tableTypes.length > 0) {
+    totalTablesCount = data.tableTypes.reduce((acc, t) => acc + (t.count || 0), 0);
+  } else {
+    totalTablesCount = data.tables || 10;
+  }
 
-  // Auto-generate default tables (e.g. T1 to T10)
-  const defaultTables = Array.from({ length: 10 }, (_, i) => ({
-    restaurantId: restaurant._id,
-    tableNumber: `T${i + 1}`,
-    capacity: i < 4 ? 2 : i < 8 ? 4 : 6,
-  }));
-  await Table.insertMany(defaultTables);
+  const restaurant = await Restaurant.create({ 
+    ...data, 
+    tables: totalTablesCount 
+  });
+
+  const generatedTables = [];
+  let tableIndex = 1;
+
+  if (data.tableTypes && data.tableTypes.length > 0) {
+    data.tableTypes.forEach(type => {
+      const count = type.count || 0;
+      for (let i = 0; i < count; i++) {
+        generatedTables.push({
+          restaurantId: restaurant._id,
+          tableNumber: `T${tableIndex++}`,
+          capacity: type.capacity || 2,
+        });
+      }
+    });
+  } else {
+    for (let i = 0; i < totalTablesCount; i++) {
+      generatedTables.push({
+        restaurantId: restaurant._id,
+        tableNumber: `T${tableIndex++}`,
+        capacity: i < 4 ? 2 : i < 8 ? 4 : 6,
+      });
+    }
+  }
+
+  await Table.insertMany(generatedTables);
 
   res.status(201).json({ message: "Restaurant added successfully", restaurant });
 };
@@ -196,4 +224,14 @@ export const deleteRestaurantTable = async (req, res) => {
   const table = await Table.findByIdAndDelete(req.params.tableId);
   if (!table) return res.status(404).json({ message: "Table not found" });
   res.json({ message: "Table deleted successfully" });
+};
+
+export const revokeStaffAccess = async (req, res) => {
+  const staff = await User.findOneAndUpdate(
+    { _id: req.params.staffId, role: "staff" },
+    { $set: { restaurantId: null, restaurantName: "" } },
+    { new: true }
+  );
+  if (!staff) return res.status(404).json({ message: "Staff user not found" });
+  res.json({ message: "Staff access revoked successfully", user: staff });
 };
